@@ -1,0 +1,493 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Task Manager</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+</head>
+<body class="bg-gray-100 min-h-screen">
+    <div id="app" class="container mx-auto px-4 py-8">
+        <header class="mb-8">
+            <h1 class="text-3xl font-bold text-center text-blue-600">Task Manager</h1>
+        </header>
+
+        <!-- Login/Register Form -->
+        <div id="auth-container" class="max-w-md mx-auto bg-white p-6 rounded shadow-md mb-8">
+            <div class="flex justify-between mb-4">
+                <button id="login-tab" class="font-medium text-blue-600 border-b-2 border-blue-600 pb-1">Login</button>
+                <button id="register-tab" class="font-medium text-gray-500">Register</button>
+            </div>
+            
+            <!-- Login Form -->
+            <form id="login-form" class="space-y-4">
+                <div>
+                    <label class="block text-gray-700">Username</label>
+                    <input type="text" id="login-username" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border" required>
+                </div>
+                <div>
+                    <label class="block text-gray-700">Password</label>
+                    <input type="password" id="login-password" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border" required>
+                </div>
+                <button type="submit" class="w-full bg-blue-600 text-white py-2 px-4 rounded hover:bg-blue-700">Log In</button>
+            </form>
+            
+            <!-- Register Form (initially hidden) -->
+            <form id="register-form" class="space-y-4 hidden">
+                <div>
+                    <label class="block text-gray-700">Username</label>
+                    <input type="text" id="register-username" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border" required>
+                </div>
+                <div>
+                    <label class="block text-gray-700">Email</label>
+                    <input type="email" id="register-email" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border" required>
+                </div>
+                <div>
+                    <label class="block text-gray-700">Password</label>
+                    <input type="password" id="register-password" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border" required>
+                </div>
+                <button type="submit" class="w-full bg-blue-600 text-white py-2 px-4 rounded hover:bg-blue-700">Register</button>
+            </form>
+        </div>
+
+        <!-- Task Management Section (initially hidden) -->
+        <div id="task-container" class="hidden">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-2xl font-semibold">My Tasks</h2>
+                <div class="flex space-x-4 items-center">
+                    <span id="username-display" class="text-gray-600"></span>
+                    <button id="logout-btn" class="text-sm bg-gray-200 hover:bg-gray-300 px-3 py-1 rounded">Logout</button>
+                </div>
+            </div>
+            
+            <!-- Add Task Form -->
+            <div class="bg-white p-6 rounded shadow-md mb-8">
+                <h3 class="text-xl font-medium mb-4">Add New Task</h3>
+                <form id="task-form" class="space-y-4">
+                    <div>
+                        <label class="block text-gray-700">Title</label>
+                        <input type="text" id="task-title" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border" required>
+                    </div>
+                    <div>
+                        <label class="block text-gray-700">Description</label>
+                        <textarea id="task-description" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border" rows="3"></textarea>
+                    </div>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-gray-700">Due Date</label>
+                            <input type="datetime-local" id="task-due-date" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border">
+                        </div>
+                        <div>
+                            <label class="block text-gray-700">Priority</label>
+                            <select id="task-priority" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border">
+                                <option value="low">Low</option>
+                                <option value="medium" selected>Medium</option>
+                                <option value="high">High</option>
+                            </select>
+                        </div>
+                    </div>
+                    <button type="submit" class="bg-blue-600 text-white py-2 px-4 rounded hover:bg-blue-700">Add Task</button>
+                </form>
+            </div>
+            
+            <!-- Task List -->
+            <div class="bg-white p-6 rounded shadow-md">
+                <h3 class="text-xl font-medium mb-4">Task List</h3>
+                <div id="tasks-list" class="space-y-4">
+                    <!-- Tasks will be dynamically added here -->
+                    <p id="no-tasks-message" class="text-gray-500 text-center py-4">No tasks found. Add your first task above!</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Task Item Template -->
+    <template id="task-template">
+        <div class="task-item border rounded p-4 flex items-start">
+            <input type="checkbox" class="task-checkbox mt-1 mr-3">
+            <div class="flex-grow">
+                <div class="flex justify-between">
+                    <h4 class="task-title font-medium"></h4>
+                    <span class="task-priority px-2 py-1 text-xs rounded-full"></span>
+                </div>
+                <p class="task-description text-gray-600 text-sm mt-1"></p>
+                <div class="flex justify-between mt-2 text-xs text-gray-500">
+                    <span class="task-due-date"></span>
+                    <div>
+                        <button class="edit-task text-blue-600 hover:text-blue-800 mr-2">Edit</button>
+                        <button class="delete-task text-red-600 hover:text-red-800">Delete</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </template>
+
+    <!-- Edit Task Modal -->
+    <div id="edit-modal" class="fixed inset-0 flex items-center justify-center hidden">
+        <div class="fixed inset-0 bg-black opacity-50"></div>
+        <div class="bg-white p-6 rounded shadow-lg z-10 w-full max-w-md">
+            <h3 class="text-xl font-medium mb-4">Edit Task</h3>
+            <form id="edit-task-form" class="space-y-4">
+                <input type="hidden" id="edit-task-id">
+                <div>
+                    <label class="block text-gray-700">Title</label>
+                    <input type="text" id="edit-task-title" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border" required>
+                </div>
+                <div>
+                    <label class="block text-gray-700">Description</label>
+                    <textarea id="edit-task-description" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border" rows="3"></textarea>
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-gray-700">Due Date</label>
+                        <input type="datetime-local" id="edit-task-due-date" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border">
+                    </div>
+                    <div>
+                        <label class="block text-gray-700">Priority</label>
+                        <select id="edit-task-priority" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border">
+                            <option value="low">Low</option>
+                            <option value="medium">Medium</option>
+                            <option value="high">High</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="flex justify-end space-x-3 mt-4">
+                    <button type="button" id="cancel-edit" class="bg-gray-300 text-gray-800 py-2 px-4 rounded hover:bg-gray-400">Cancel</button>
+                    <button type="submit" class="bg-blue-600 text-white py-2 px-4 rounded hover:bg-blue-700">Save Changes</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        // API Configuration
+        const API_URL = 'http://localhost:8000';
+        let token = localStorage.getItem('token');
+        let currentUser = null;
+
+        // DOM Elements
+        const authContainer = document.getElementById('auth-container');
+        const taskContainer = document.getElementById('task-container');
+        const loginTab = document.getElementById('login-tab');
+        const registerTab = document.getElementById('register-tab');
+        const loginForm = document.getElementById('login-form');
+        const registerForm = document.getElementById('register-form');
+        const taskForm = document.getElementById('task-form');
+        const tasksList = document.getElementById('tasks-list');
+        const noTasksMessage = document.getElementById('no-tasks-message');
+        const usernameDisplay = document.getElementById('username-display');
+        const logoutBtn = document.getElementById('logout-btn');
+        const editModal = document.getElementById('edit-modal');
+        const editTaskForm = document.getElementById('edit-task-form');
+        const cancelEdit = document.getElementById('cancel-edit');
+
+        // API Client Configuration
+        const apiClient = axios.create({
+            baseURL: API_URL,
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        });
+
+        // Set Auth Token
+        function setAuthToken(newToken) {
+            token = newToken;
+            localStorage.setItem('token', token);
+            apiClient.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+        }
+
+        // Clear Auth Token
+        function clearAuthToken() {
+            token = null;
+            localStorage.removeItem('token');
+            delete apiClient.defaults.headers.common['Authorization'];
+        }
+
+        // Check Authentication Status
+        function checkAuth() {
+            if (token) {
+                setAuthToken(token);
+                getCurrentUser();
+                authContainer.classList.add('hidden');
+                taskContainer.classList.remove('hidden');
+            } else {
+                authContainer.classList.remove('hidden');
+                taskContainer.classList.add('hidden');
+            }
+        }
+
+        // Get Current User
+        async function getCurrentUser() {
+            try {
+                const response = await apiClient.get('/users/me/');
+                currentUser = response.data;
+                usernameDisplay.textContent = `Welcome, ${currentUser.username}!`;
+                fetchTasks();
+            } catch (error) {
+                console.error('Error fetching user:', error);
+                clearAuthToken();
+                checkAuth();
+            }
+        }
+
+        // Fetch Tasks
+        async function fetchTasks() {
+            try {
+                const response = await apiClient.get('/tasks/');
+                renderTasks(response.data);
+            } catch (error) {
+                console.error('Error fetching tasks:', error);
+            }
+        }
+
+        // Render Tasks
+        function renderTasks(tasks) {
+            // Clear existing tasks except the no-tasks message
+            const taskElements = tasksList.querySelectorAll('.task-item');
+            taskElements.forEach(el => el.remove());
+            
+            if (tasks.length === 0) {
+                noTasksMessage.classList.remove('hidden');
+            } else {
+                noTasksMessage.classList.add('hidden');
+                
+                const taskTemplate = document.getElementById('task-template');
+                
+                tasks.forEach(task => {
+                    const taskElement = document.importNode(taskTemplate.content, true);
+                    
+                    const taskItem = taskElement.querySelector('.task-item');
+                    const checkbox = taskElement.querySelector('.task-checkbox');
+                    const titleEl = taskElement.querySelector('.task-title');
+                    const descEl = taskElement.querySelector('.task-description');
+                    const dueDateEl = taskElement.querySelector('.task-due-date');
+                    const priorityEl = taskElement.querySelector('.task-priority');
+                    const editBtn = taskElement.querySelector('.edit-task');
+                    const deleteBtn = taskElement.querySelector('.delete-task');
+                    
+                    // Set task data
+                    taskItem.dataset.id = task.id;
+                    titleEl.textContent = task.title;
+                    descEl.textContent = task.description || 'No description';
+                    
+                    // Format and set due date
+                    if (task.due_date) {
+                        const date = new Date(task.due_date);
+                        dueDateEl.textContent = `Due: ${date.toLocaleString()}`;
+                    } else {
+                        dueDateEl.textContent = 'No due date';
+                    }
+                    
+                    // Set priority
+                    priorityEl.textContent = task.priority.charAt(0).toUpperCase() + task.priority.slice(1);
+                    
+                    // Set priority color
+                    if (task.priority === 'high') {
+                        priorityEl.classList.add('bg-red-100', 'text-red-800');
+                    } else if (task.priority === 'medium') {
+                        priorityEl.classList.add('bg-yellow-100', 'text-yellow-800');
+                    } else {
+                        priorityEl.classList.add('bg-green-100', 'text-green-800');
+                    }
+                    
+                    // Set completed status
+                    checkbox.checked = task.completed;
+                    if (task.completed) {
+                        titleEl.classList.add('line-through', 'text-gray-400');
+                    }
+                    
+                    // Add event listeners
+                    checkbox.addEventListener('change', () => toggleTaskCompletion(task.id, checkbox.checked));
+                    editBtn.addEventListener('click', () => showEditModal(task));
+                    deleteBtn.addEventListener('click', () => deleteTask(task.id));
+                    
+                    tasksList.appendChild(taskElement);
+                });
+            }
+        }
+
+        // Toggle Task Completion
+        async function toggleTaskCompletion(taskId, completed) {
+            try {
+                await apiClient.put(`/tasks/${taskId}`, { completed });
+                fetchTasks();
+            } catch (error) {
+                console.error('Error updating task:', error);
+            }
+        }
+
+        // Show Edit Modal
+        function showEditModal(task) {
+            document.getElementById('edit-task-id').value = task.id;
+            document.getElementById('edit-task-title').value = task.title;
+            document.getElementById('edit-task-description').value = task.description || '';
+            
+            if (task.due_date) {
+                // Format date for datetime-local input
+                const date = new Date(task.due_date);
+                const formattedDate = date.toISOString().slice(0, 16);
+                document.getElementById('edit-task-due-date').value = formattedDate;
+            } else {
+                document.getElementById('edit-task-due-date').value = '';
+            }
+            
+            document.getElementById('edit-task-priority').value = task.priority;
+            
+            editModal.classList.remove('hidden');
+        }
+
+        // Delete Task
+        async function deleteTask(taskId) {
+            if (confirm('Are you sure you want to delete this task?')) {
+                try {
+                    await apiClient.delete(`/tasks/${taskId}`);
+                    fetchTasks();
+                } catch (error) {
+                    console.error('Error deleting task:', error);
+                }
+            }
+        }
+
+        // Event Listeners
+        // Auth Tabs
+        loginTab.addEventListener('click', () => {
+            loginTab.classList.add('text-blue-600', 'border-b-2', 'border-blue-600');
+            loginTab.classList.remove('text-gray-500');
+            registerTab.classList.add('text-gray-500');
+            registerTab.classList.remove('text-blue-600', 'border-b-2', 'border-blue-600');
+            loginForm.classList.remove('hidden');
+            registerForm.classList.add('hidden');
+        });
+
+        registerTab.addEventListener('click', () => {
+            registerTab.classList.add('text-blue-600', 'border-b-2', 'border-blue-600');
+            registerTab.classList.remove('text-gray-500');
+            loginTab.classList.add('text-gray-500');
+            loginTab.classList.remove('text-blue-600', 'border-b-2', 'border-blue-600');
+            registerForm.classList.remove('hidden');
+            loginForm.classList.add('hidden');
+        });
+
+        // Login Form
+        loginForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const username = document.getElementById('login-username').value;
+            const password = document.getElementById('login-password').value;
+            
+            try {
+                const formData = new FormData();
+                formData.append('username', username);
+                formData.append('password', password);
+                
+                const response = await axios.post(`${API_URL}/token`, formData);
+                setAuthToken(response.data.access_token);
+                checkAuth();
+                loginForm.reset();
+            } catch (error) {
+                alert('Login failed. Please check your credentials.');
+                console.error('Login error:', error);
+            }
+        });
+
+        // Register Form
+        registerForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const username = document.getElementById('register-username').value;
+            const email = document.getElementById('register-email').value;
+            const password = document.getElementById('register-password').value;
+            
+            try {
+                await apiClient.post('/users/', { username, email, password });
+                alert('Registration successful! Please log in.');
+                loginTab.click();
+                registerForm.reset();
+            } catch (error) {
+                alert('Registration failed. Username may already be taken.');
+                console.error('Registration error:', error);
+            }
+        });
+
+        // Logout Button
+        logoutBtn.addEventListener('click', () => {
+            clearAuthToken();
+            checkAuth();
+        });
+
+        // Add Task Form
+        taskForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const title = document.getElementById('task-title').value;
+            const description = document.getElementById('task-description').value;
+            const dueDate = document.getElementById('task-due-date').value;
+            const priority = document.getElementById('task-priority').value;
+            
+            const taskData = {
+                title,
+                description,
+                priority,
+                completed: false
+            };
+            
+            if (dueDate) {
+                taskData.due_date = new Date(dueDate).toISOString();
+            }
+            
+            try {
+                await apiClient.post('/tasks/', taskData);
+                taskForm.reset();
+                fetchTasks();
+            } catch (error) {
+                console.error('Error adding task:', error);
+                alert('Error adding task. Please try again.');
+            }
+        });
+
+        // Edit Task Form
+        editTaskForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const taskId = document.getElementById('edit-task-id').value;
+            const title = document.getElementById('edit-task-title').value;
+            const description = document.getElementById('edit-task-description').value;
+            const dueDate = document.getElementById('edit-task-due-date').value;
+            const priority = document.getElementById('edit-task-priority').value;
+            
+            const taskData = {
+                title,
+                description,
+                priority
+            };
+            
+            if (dueDate) {
+                taskData.due_date = new Date(dueDate).toISOString();
+            }
+            
+            try {
+                await apiClient.put(`/tasks/${taskId}`, taskData);
+                editModal.classList.add('hidden');
+                fetchTasks();
+            } catch (error) {
+                console.error('Error updating task:', error);
+                alert('Error updating task. Please try again.');
+            }
+        });
+
+        // Cancel Edit Button
+        cancelEdit.addEventListener('click', () => {
+            editModal.classList.add('hidden');
+        });
+
+        // Close Modal When Clicking Outside
+        editModal.addEventListener('click', (e) => {
+            if (e.target === editModal) {
+                editModal.classList.add('hidden');
+            }
+        });
+
+        // Initialize App
+        checkAuth();
+    </script>
+</body>
+</html>
