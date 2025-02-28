@@ -1,11 +1,16 @@
 from sqlalchemy import Boolean, Column, ForeignKey, Integer, String, DateTime, Text
 from sqlalchemy.orm import relationship
 from database import Base
+from pydantic import BaseModel
+from datetime import datetime
+from typing import Optional
+
+
+# from peewee import *
 
 
 class User(Base):
     __tablename__ = "users"
-
     id = Column(Integer, primary_key=True, index=True)
     username = Column(String, unique=True, index=True)
     email = Column(String, unique=True, index=True)
